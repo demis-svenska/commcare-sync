@@ -1,0 +1,27 @@
+- hosts: cctest
+  become: true
+  vars:
+    container_count: 4
+    default_container_name: docker
+    default_container_image: ubuntu
+    default_container_command: sleep 1d
+
+  tasks:
+    - name: Create docker images
+      #community.docker.docker_image:
+      docker_image:
+        name: commcare-sync_web
+        source: build
+        build:
+          path: .
+          dockerfile: ./Dockerfile.dev 
+
+    - name: Create docker images
+      #community.docker.docker_image:
+      docker_image:
+        name: commcare-sync_celery
+        source: build
+        build:
+          path: .
+          dockerfile: ./Dockerfile.dev 
+
