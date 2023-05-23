@@ -31,32 +31,68 @@
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
-
+      tags:
+      - keys
+      - docker
     - name: Add Docker Repository
       apt_repository:
         repo: deb https://download.docker.com/linux/ubuntu jammy stable
         state: present
-
+      tags:
+      - keys
+      - docker
     - name: Update apt and install docker-ce
       apt:
         name: docker-ce
         state: latest
         update_cache: true
-
+      tags:
+      - docker
     - name: Install Docker Module for Python
       pip:
         name: docker
-
+      tags:
+      - docker
     - name: Install Docker Compose
       pip:
         name: docker-compose
         state: present
-    - name: Execute Docker Compose
-      command: docker-compose up -d
-    - name: Create docker swarm
+      tags:
+      - docker
+      - docker-compose
+    - name: Create docker images for web
+      community.docker.docker_image:
+        name: commcare-sync_web
+        source: build
+        build:
+          path: .
+          dockerfile: ./Dockerfile.dev
+
+    - name: Create docker images for celery
+      #community.docker.docker_image:
+      docker_image:
+        name: commcare-sync_celery
+        source: build
+        build:
+          path: .
+          dockerfile: ./Dockerfile.dev
+    #- name: Execute Docker Compose
+    #  command: docker-compose up -d
+    - name: initialize docker swarm
       command: docker swarm init
+      ignore_errors: yes
+
     - name: run deploy stack
       command: docker stack deploy -c docker-stack.yml cc-sync 
+    
+    - name: Sleep for 10 seconds
+      pause:
+        seconds: 10
+
+    - name: run python migration
+      command: docker exec $(docker ps | grep commcare-sync_web | awk 'NR==1 {print $1}') python manage.py migrate
+      ignore_errors: yes
+
     - name: Pull default Docker image
       community.docker.docker_image:
         name: "{{ default_container_image }}"
